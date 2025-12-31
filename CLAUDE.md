@@ -11,7 +11,21 @@ This is an autonomous coding agent system with a React-based UI. It uses the Cla
 
 ## Commands
 
-### Python Backend
+### Quick Start (Recommended)
+
+```bash
+# Windows - launches CLI menu
+start.bat
+
+# macOS/Linux
+./start.sh
+
+# Launch Web UI (serves pre-built React app)
+start_ui.bat      # Windows
+./start_ui.sh     # macOS/Linux
+```
+
+### Python Backend (Manual)
 
 ```bash
 # Create and activate virtual environment
@@ -34,10 +48,12 @@ python autonomous_agent_demo.py --project-dir PROJECT_NAME
 ```bash
 cd ui
 npm install
-npm run dev      # Development server
-npm run build    # Production build
+npm run dev      # Development server (hot reload)
+npm run build    # Production build (required for start_ui.bat)
 npm run lint     # Run ESLint
 ```
+
+**Note:** The `start_ui.bat` script serves the pre-built UI from `ui/dist/`. After making UI changes, run `npm run build` in the `ui/` directory.
 
 ## Architecture
 
@@ -109,3 +125,18 @@ Defense-in-depth approach configured in `client.py`:
 2. Create ClaudeSDKClient with security settings
 3. Send prompt and stream response
 4. Auto-continue with 3-second delay between sessions
+
+### Real-time UI Updates
+
+The UI receives updates via WebSocket (`/ws/projects/{project_name}`):
+- `progress` - Test pass counts
+- `agent_status` - Running/paused/stopped/crashed
+- `log` - Agent output lines (streamed from subprocess stdout)
+- `feature_update` - Feature status changes
+
+### Design System
+
+The UI uses a **neobrutalism** design with Tailwind CSS v4:
+- CSS variables defined in `ui/src/styles/globals.css` via `@theme` directive
+- Custom animations: `animate-slide-in`, `animate-pulse-neo`, `animate-shimmer`
+- Color tokens: `--color-neo-pending` (yellow), `--color-neo-progress` (cyan), `--color-neo-done` (green)
