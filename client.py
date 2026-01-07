@@ -151,12 +151,13 @@ def create_client(project_dir: Path, model: str, yolo_mode: bool = False):
     print("   - Project settings enabled (skills, commands, CLAUDE.md)")
     print()
 
-    # Use system Claude CLI instead of bundled one (avoids Bun runtime crash on Windows)
+    # Use standard Claude CLI (CCR wrapper has compatibility issues with Agent SDK)
+    # To use CCR, configure it in ~/.claude-code-router/config.json and use ccr code directly
     system_cli = shutil.which("claude")
     if system_cli:
-        print(f"   - Using system CLI: {system_cli}")
+        print(f"   - Using Claude CLI: {system_cli}")
     else:
-        print("   - Warning: System Claude CLI not found, using bundled CLI")
+        print("   - Warning: No CLI found, using bundled CLI")
 
     # Build MCP servers config - features is always included, playwright only in standard mode
     mcp_servers = {

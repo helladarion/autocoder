@@ -338,3 +338,48 @@ async def get_project_stats_endpoint(name: str):
         raise HTTPException(status_code=404, detail="Project directory not found")
 
     return get_project_stats(project_dir)
+
+
+@router.post("/{name}/reset")
+async def reset_project(name: str):
+    """
+    Reset a project by clearing all features.
+
+    This deletes the features.db file, causing the initializer agent
+    to re-run on the next start, re-creating all features from the app spec.
+
+    Args:
+        name: Project name to reset
+    """
+    _init_imports()
+    _, _, get_project_path, _, _ = _get_registry_functions()
+
+    name = validate_project_name(name)
+    project_dir = get_project_path(name)
+
+    if not project_dir:
+        raise HTTPException(status_code=404, detail=f"Project '{name}' not found")
+
+    if not project_dir.exists():
+        raise HTTPException(status_code=404, detail="Project directory not found")
+
+    # Check if agent is running
+    lock_file = project_dir / ".agent.lock"
+    if lock_file.exists():
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot reset project while agent is running. Stop the agent first."
+        )
+
+    # Delete the features database
+    db_path = project_dir / "features.db"
+    if db_path.exists():
+        try:
+            db_path.unlink()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete features database: {e}")
+
+    return {
+        "success": True,
+        "message": f"Project '{name}' reset. All features cleared - initializer will run on next start."
+    }

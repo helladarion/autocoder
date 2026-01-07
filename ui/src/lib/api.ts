@@ -66,6 +66,12 @@ export async function deleteProject(name: string): Promise<void> {
   })
 }
 
+export async function resetProject(name: string): Promise<{ success: boolean; message: string }> {
+  return fetchJSON(`/projects/${encodeURIComponent(name)}/reset`, {
+    method: 'POST',
+  })
+}
+
 export async function getProjectPrompts(name: string): Promise<ProjectPrompts> {
   return fetchJSON(`/projects/${encodeURIComponent(name)}/prompts`)
 }

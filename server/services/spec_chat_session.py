@@ -141,7 +141,7 @@ class SpecChatSession:
 
         # Create Claude SDK client with limited tools for spec creation
         # Use Opus for best quality spec generation
-        # Use system CLI to avoid bundled Bun runtime crash (exit code 3) on Windows
+        # Use system Claude CLI
         system_cli = shutil.which("claude")
         try:
             self.client = ClaudeSDKClient(

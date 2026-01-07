@@ -6,6 +6,8 @@ Main entry point for the Autonomous Coding UI server.
 Provides REST API, WebSocket, and static file serving.
 """
 
+import json
+import os
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -31,6 +33,32 @@ from .websocket import project_websocket
 # Paths
 ROOT_DIR = Path(__file__).parent.parent
 UI_DIST_DIR = ROOT_DIR / "ui" / "dist"
+
+
+def load_claude_settings():
+    """Load Claude settings from ~/.claude/settings.json and set environment variables."""
+    claude_settings_path = Path.home() / ".claude" / "settings.json"
+
+    if not claude_settings_path.exists():
+        return
+
+    try:
+        with open(claude_settings_path) as f:
+            settings = json.load(f)
+
+        # Extract env section and set environment variables
+        env_vars = settings.get("env", {})
+        for key, value in env_vars.items():
+            # Only set if not already set in environment
+            if key not in os.environ:
+                os.environ[key] = str(value)
+
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Warning: Failed to load Claude settings: {e}")
+
+
+# Load settings at module import time
+load_claude_settings()
 
 
 @asynccontextmanager

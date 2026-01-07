@@ -248,11 +248,14 @@ class AgentProcessManager:
         try:
             # Start subprocess with piped stdout/stderr
             # Use project_dir as cwd so Claude SDK sandbox allows access to project files
+            # Pass through parent environment so ANTHROPIC_BASE_URL and other settings are available
+            import os
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=str(self.project_dir),
+                env=os.environ,  # Pass through parent environment
             )
 
             self._create_lock()

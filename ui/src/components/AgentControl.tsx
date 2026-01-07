@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Play, Pause, Square, Loader2, Zap } from 'lucide-react'
+import { Play, Pause, Square, Loader2, Zap, RotateCcw } from 'lucide-react'
 import {
   useStartAgent,
   useStopAgent,
   usePauseAgent,
   useResumeAgent,
+  useResetProject,
 } from '../hooks/useProjects'
 import type { AgentStatus } from '../lib/types'
 
@@ -16,22 +17,38 @@ interface AgentControlProps {
 
 export function AgentControl({ projectName, status, yoloMode = false }: AgentControlProps) {
   const [yoloEnabled, setYoloEnabled] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   const startAgent = useStartAgent(projectName)
   const stopAgent = useStopAgent(projectName)
   const pauseAgent = usePauseAgent(projectName)
   const resumeAgent = useResumeAgent(projectName)
+  const resetProject = useResetProject()
 
   const isLoading =
     startAgent.isPending ||
     stopAgent.isPending ||
     pauseAgent.isPending ||
-    resumeAgent.isPending
+    resumeAgent.isPending ||
+    resetProject.isPending
 
   const handleStart = () => startAgent.mutate(yoloEnabled)
   const handleStop = () => stopAgent.mutate()
   const handlePause = () => pauseAgent.mutate()
   const handleResume = () => resumeAgent.mutate()
+  const handleReset = () => {
+    setResetError(null)
+    resetProject.mutate(projectName, {
+      onSuccess: () => {
+        setShowResetConfirm(false)
+        setResetError(null)
+      },
+      onError: (error: Error) => {
+        setResetError(error.message || 'Failed to reset project')
+      },
+    })
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -52,6 +69,15 @@ export function AgentControl({ projectName, status, yoloMode = false }: AgentCon
       <div className="flex gap-1">
         {status === 'stopped' || status === 'crashed' ? (
           <>
+            {/* Reset Button - only shown when stopped */}
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              disabled={isLoading}
+              className="neo-btn neo-btn-secondary text-sm py-2 px-3"
+              title="Reset Project (clear all features)"
+            >
+              <RotateCcw size={18} />
+            </button>
             {/* YOLO Toggle - only shown when stopped */}
             <button
               onClick={() => setYoloEnabled(!yoloEnabled)}
@@ -123,6 +149,50 @@ export function AgentControl({ projectName, status, yoloMode = false }: AgentCon
           </>
         ) : null}
       </div>
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white border-3 border-[var(--color-neo-border)] p-6 max-w-md">
+            <h3 className="font-display font-bold text-lg mb-2">Reset Project?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This will delete all features and re-run the initializer agent on the next start.
+              Your app spec and project files will be preserved.
+            </p>
+            {resetError && (
+              <div className="mb-4 p-2 bg-red-50 border-2 border-red-300 text-red-700 text-sm">
+                {resetError}
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowResetConfirm(false)
+                  setResetError(null)
+                }}
+                disabled={resetProject.isPending}
+                className="neo-btn neo-btn-secondary text-sm py-2 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetProject.isPending}
+                className="neo-btn neo-btn-danger text-sm py-2 px-4"
+              >
+                {resetProject.isPending ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin inline mr-2" />
+                    Resetting...
+                  </>
+                ) : (
+                  'Reset Project'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
