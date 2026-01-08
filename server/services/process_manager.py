@@ -246,16 +246,24 @@ class AgentProcessManager:
             cmd.append("--yolo")
 
         try:
+            # Prepare environment - pass through parent environment
+            # This allows CCR settings (ANTHROPIC_BASE_URL) to be inherited
+            import os
+            env = os.environ.copy()
+
+            # Log if CCR is active
+            base_url = env.get("ANTHROPIC_BASE_URL", "")
+            if base_url.startswith("http://127.0.0.1:"):
+                logger.info(f"Agent will use CCR (Claude Code Router): {base_url}")
+
             # Start subprocess with piped stdout/stderr
             # Use project_dir as cwd so Claude SDK sandbox allows access to project files
-            # Pass through parent environment so ANTHROPIC_BASE_URL and other settings are available
-            import os
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=str(self.project_dir),
-                env=os.environ,  # Pass through parent environment
+                env=env,
             )
 
             self._create_lock()

@@ -151,8 +151,10 @@ def create_client(project_dir: Path, model: str, yolo_mode: bool = False):
     print("   - Project settings enabled (skills, commands, CLAUDE.md)")
     print()
 
-    # Use standard Claude CLI (CCR wrapper has compatibility issues with Agent SDK)
-    # To use CCR, configure it in ~/.claude-code-router/config.json and use ccr code directly
+    # Use system Claude CLI - respects ANTHROPIC_BASE_URL from environment
+    # This allows CCR (Claude Code Router) to route API requests when:
+    # - Running via ccr code (which sets ANTHROPIC_BASE_URL automatically)
+    # - Or after running: eval "$(ccr activate)"
     system_cli = shutil.which("claude")
     if system_cli:
         print(f"   - Using Claude CLI: {system_cli}")

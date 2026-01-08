@@ -1,0 +1,42 @@
+#!/bin/bash
+# ccr-code wrapper - Routes to autocoder if project specified, else runs Claude Code
+# Place this script in your PATH before CCR's ccr to override the default behavior
+#
+# Usage:
+#   ccr-code my-app          # Runs autocoder with CCR
+#   ccr-code "claude args"   # Runs Claude Code normally (no project)
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Get CCR environment variables
+eval "$(ccr activate)" 2>/dev/null || {
+    echo "Error: CCR is not installed or not running."
+    echo "Install with: npm install -g @musistudio/claude-code-router"
+    echo "Start with: ccr start"
+    exit 1
+}
+
+# Check if argument looks like a project name (not starting with -- or containing spaces)
+if [[ -n "$1" && ! "$1" =~ ^-- && ! "$1" =~ [[:space:]] ]]; then
+    # First arg looks like a project - run autocoder
+    PROJECT_DIR="$1"
+    shift
+
+    echo "=========================================="
+    echo "  CCR-Enhanced Autonomous Coding Agent"
+    echo "=========================================="
+    echo ""
+    echo "ANTHROPIC_BASE_URL: $ANTHROPIC_BASE_URL"
+    echo "Project: $PROJECT_DIR"
+    echo ""
+    echo "Starting agent..."
+    echo "=========================================="
+
+    exec python3 "$SCRIPT_DIR/autonomous_agent_demo.py" --project-dir "$PROJECT_DIR" "$@"
+else
+    # No project detected - run Claude Code normally
+    # Use the real claude command (not CCR's wrapper)
+    exec /opt/homebrew/bin/claude "$@"
+fi

@@ -1,0 +1,93 @@
+#!/bin/bash
+# Claude Code Router Wrapper for Autocoder
+# This wrapper runs the autocoder with CCR's environment variables
+# Usage: ./ccr-autocoder [--project-dir <path>] [--yolo]
+#
+# To use as a shell function (add to ~/.zshrc or ~/.bashrc):
+#
+#   ccr-autocoder() {
+#     local script_dir="/Users/rrogerio/Nextcloud/Mac/projects/git/autocoder"
+#     eval "$(ccr activate)" 2>/dev/null || { echo "CCR not running"; return 1; }
+#     python3 "$script_dir/autonomous_agent_demo.py" "$@"
+# }
+#
+# Then use: ccr-autocoder --project-dir my-app
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Get CCR environment variables
+eval "$(ccr activate)" 2>/dev/null || {
+    echo "Error: CCR is not installed or not running."
+    echo "Install with: npm install -g @musistudio/claude-code-router"
+    echo "Start with: ccr start"
+    exit 1
+}
+
+# Check if CCR server is running
+if ! curl -s --connect-timeout 2 "http://127.0.0.1:3456/health" >/dev/null 2>&1; then
+    echo "Warning: CCR server may not be running. Starting it..."
+    ccr start 2>/dev/null || true
+    sleep 2
+fi
+
+# Parse arguments
+PROJECT_DIR=""
+YOLO_MODE=false
+MAX_ITERATIONS=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --project-dir)
+            PROJECT_DIR="$2"
+            shift 2
+            ;;
+        --yolo)
+            YOLO_MODE=true
+            shift
+            ;;
+        --max-iterations)
+            MAX_ITERATIONS="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$PROJECT_DIR" ]]; then
+    echo "Usage: ccr-autocoder --project-dir <path> [--yolo] [--max-iterations N]"
+    echo ""
+    echo "Options:"
+    echo "  --project-dir <path>    Project directory or registered project name"
+    echo "  --yolo                  Enable YOLO mode (no browser testing)"
+    echo "  --max-iterations N      Limit agent iterations"
+    echo ""
+    echo "Example:"
+    echo "  ./ccr-autocoder --project-dir /path/to/project"
+    echo "  ./ccr-autocoder --project-dir my-app --yolo"
+    exit 1
+fi
+
+# Build command
+CMD="python3 ${SCRIPT_DIR}/autonomous_agent_demo.py --project-dir \"${PROJECT_DIR}\""
+[[ "$YOLO_MODE" == true ]] && CMD="$CMD --yolo"
+[[ -n "$MAX_ITERATIONS" ]] && CMD="$CMD --max-iterations $MAX_ITERATIONS"
+
+echo "=========================================="
+echo "  CCR-Enhanced Autonomous Coding Agent"
+echo "=========================================="
+echo ""
+echo "ANTHROPIC_BASE_URL: $ANTHROPIC_BASE_URL"
+echo "Project: $PROJECT_DIR"
+echo "Mode: ${YOLO_MODE:+YOLO }Standard"
+echo ""
+echo "Starting agent..."
+echo "=========================================="
+echo ""
+
+# Run the agent with CCR's environment
+eval "$CMD"

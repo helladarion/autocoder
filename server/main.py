@@ -57,8 +57,43 @@ def load_claude_settings():
         print(f"Warning: Failed to load Claude settings: {e}")
 
 
+def load_ccr_settings():
+    """Load CCR (Claude Code Router) settings if available."""
+    import subprocess
+
+    try:
+        # Check if CCR is installed and get its environment variables
+        result = subprocess.run(
+            ["ccr", "activate"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode == 0:
+            # Parse the export statements and set environment variables
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('export '):
+                    # Parse: export KEY="value" or export KEY=value
+                    line = line[7:]  # Remove 'export '
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        # Set if not already set
+                        if key not in os.environ:
+                            os.environ[key] = value
+
+            # Log that CCR is active
+            base_url = os.environ.get('ANTHROPIC_BASE_URL', '')
+            if base_url:
+                print(f"CCR (Claude Code Router) detected: {base_url}")
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass  # CCR not installed or not running
+
+
 # Load settings at module import time
 load_claude_settings()
+load_ccr_settings()
 
 
 @asynccontextmanager
@@ -156,11 +191,15 @@ async def setup_status():
     node = shutil.which("node") is not None
     npm = shutil.which("npm") is not None
 
+    # Check for CCR (Claude Code Router)
+    ccr_active = shutil.which("ccr") is not None and os.environ.get("ANTHROPIC_BASE_URL", "").startswith("http://127.0.0.1:")
+
     return SetupStatus(
         claude_cli=claude_cli,
         credentials=credentials,
         node=node,
         npm=npm,
+        ccr_active=ccr_active,
     )
 
 

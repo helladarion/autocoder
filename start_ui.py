@@ -153,13 +153,47 @@ def build_frontend() -> bool:
     return run_command([npm_cmd, "run", "build"], cwd=UI_DIR)
 
 
+def load_ccr_environment() -> dict:
+    """Load CCR environment variables if CCR is installed and running."""
+    ccr_env = {}
+    try:
+        result = subprocess.run(
+            ["ccr", "activate"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('export '):
+                    line = line[7:]  # Remove 'export '
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        ccr_env[key] = value
+            if ccr_env.get('ANTHROPIC_BASE_URL', '').startswith('http://127.0.0.1:'):
+                print("  CCR (Claude Code Router) detected and enabled")
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass
+    return ccr_env
+
+
 def start_dev_server(port: int) -> tuple:
     """Start both Vite and FastAPI in development mode."""
     venv_python = get_venv_python()
 
+    # Load CCR environment
+    ccr_env = load_ccr_environment()
+
     print("\n  Starting development servers...")
     print(f"  - FastAPI backend: http://127.0.0.1:{port}")
     print("  - Vite frontend:   http://127.0.0.1:5173")
+
+    # Prepare environment with CCR settings
+    server_env = os.environ.copy()
+    server_env.update(ccr_env)
 
     # Start FastAPI
     backend = subprocess.Popen([
@@ -168,7 +202,7 @@ def start_dev_server(port: int) -> tuple:
         "--host", "127.0.0.1",
         "--port", str(port),
         "--reload"
-    ], cwd=str(ROOT))
+    ], cwd=str(ROOT), env=server_env)
 
     # Start Vite with API port env var for proxy configuration
     npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
@@ -185,14 +219,21 @@ def start_production_server(port: int):
     """Start FastAPI server in production mode."""
     venv_python = get_venv_python()
 
+    # Load CCR environment
+    ccr_env = load_ccr_environment()
+
     print(f"\n  Starting server at http://127.0.0.1:{port}")
+
+    # Prepare environment with CCR settings
+    server_env = os.environ.copy()
+    server_env.update(ccr_env)
 
     return subprocess.Popen([
         str(venv_python), "-m", "uvicorn",
         "server.main:app",
         "--host", "127.0.0.1",
         "--port", str(port)
-    ], cwd=str(ROOT))
+    ], cwd=str(ROOT), env=server_env)
 
 
 def main() -> None:

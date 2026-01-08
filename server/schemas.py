@@ -130,6 +130,7 @@ class SetupStatus(BaseModel):
     credentials: bool
     node: bool
     npm: bool
+    ccr_active: bool = False
 
 
 # ============================================================================
