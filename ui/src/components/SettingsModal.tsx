@@ -179,7 +179,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </div>
             </div>
 
-            {/* Model Selection - Radio Group */}
+            {/* Model Selection - Dropdown */}
             <div>
               <label
                 id="model-label"
@@ -187,28 +187,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               >
                 Model
               </label>
-              <div
-                className="flex border-3 border-[var(--color-neo-border)]"
-                role="radiogroup"
+              <select
+                value={settings?.model ?? ''}
+                onChange={(e) => handleModelChange(e.target.value)}
+                disabled={isSaving}
+                className="w-full py-3 px-4 font-display font-bold text-sm border-3 border-[var(--color-neo-border)] bg-[var(--color-neo-card)] text-[var(--color-neo-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-neo-accent)]"
                 aria-labelledby="model-label"
               >
                 {models.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => handleModelChange(model.id)}
-                    disabled={isSaving}
-                    role="radio"
-                    aria-checked={settings.model === model.id}
-                    className={`flex-1 py-3 px-4 font-display font-bold text-sm transition-colors ${
-                      settings.model === model.id
-                        ? 'bg-[var(--color-neo-accent)] text-[var(--color-neo-text-on-bright)]'
-                        : 'bg-[var(--color-neo-card)] text-[var(--color-neo-text)] hover:bg-[var(--color-neo-hover-subtle)]'
-                    } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
+                  <option key={model.id} value={model.id}>
                     {model.name}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
             {/* Testing Agent Ratio */}

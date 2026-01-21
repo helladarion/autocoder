@@ -15,6 +15,7 @@ from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from dotenv import load_dotenv
 
+from registry import is_router_model, get_router_base_url, get_router_api_key
 from security import bash_security_hook
 
 # Load environment variables from .env file if present
@@ -248,15 +249,23 @@ def create_client(
 
     # Build environment overrides for API endpoint configuration
     # These override system env vars for the Claude CLI subprocess,
-    # allowing AutoCoder to use alternative APIs (e.g., GLM) without
-    # affecting the user's global Claude Code settings
+    # allowing AutoCoder to use alternative APIs (e.g., GLM, cloud router)
+    # without affecting the user's global Claude Code settings
     sdk_env = {}
     for var in API_ENV_VARS:
         value = os.getenv(var)
         if value:
             sdk_env[var] = value
 
-    if sdk_env:
+    # Check if model uses cloud router
+    if is_router_model(model):
+        router_base_url = get_router_base_url()
+        router_api_key = get_router_api_key()
+        sdk_env["ANTHROPIC_BASE_URL"] = router_base_url
+        sdk_env["ANTHROPIC_AUTH_TOKEN"] = router_api_key
+        print(f"   - Cloud Router: Using {router_base_url}")
+        print(f"   - Model: {model}")
+    elif sdk_env:
         print(f"   - API overrides: {', '.join(sdk_env.keys())}")
         if "ANTHROPIC_BASE_URL" in sdk_env:
             print(f"   - GLM Mode: Using {sdk_env['ANTHROPIC_BASE_URL']}")

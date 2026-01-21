@@ -292,15 +292,22 @@ function App() {
                     <Settings size={18} />
                   </button>
 
-                  {/* GLM Mode Badge */}
-                  {settings?.glm_mode && (
+                  {/* API Badge - shows DGX for router models, GLM for GLM models */}
+                  {settings?.model?.includes('/') ? (
+                    <span
+                      className="px-2 py-1 text-xs font-bold bg-[var(--color-neo-pending)] text-black rounded border-2 border-neo-border shadow-neo-sm"
+                      title="Using DGX Cloud Router (claude-code-router)"
+                    >
+                      DGX
+                    </span>
+                  ) : settings?.glm_mode ? (
                     <span
                       className="px-2 py-1 text-xs font-bold bg-[var(--color-neo-glm)] text-white rounded border-2 border-neo-border shadow-neo-sm"
                       title="Using GLM API (configured via .env)"
                     >
                       GLM
                     </span>
-                  )}
+                  ) : null}
                 </>
               )}
 

@@ -28,19 +28,52 @@ logger = logging.getLogger(__name__)
 # Model Configuration (Single Source of Truth)
 # =============================================================================
 
-# Available models with display names
-# To add a new model: add an entry here with {"id": "model-id", "name": "Display Name"}
-AVAILABLE_MODELS = [
+# Base models (always available)
+BASE_MODELS = [
     {"id": "claude-opus-4-5-20251101", "name": "Claude Opus 4.5"},
     {"id": "claude-sonnet-4-5-20250929", "name": "Claude Sonnet 4.5"},
 ]
 
+# Load custom models from environment (AUTOCODER_MODELS in .env)
+# Format: "model-id|Display Name,model-id|Display Name"
+def _load_custom_models():
+    from dotenv import load_dotenv
+    load_dotenv()
+    import os
+    models_str = os.getenv("AUTOCODER_MODELS", "")
+    if not models_str:
+        return []
+    models = []
+    for item in models_str.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "|" in item:
+            model_id, name = item.split("|", 1)
+            models.append({"id": model_id.strip(), "name": name.strip()})
+        else:
+            models.append({"id": item, "name": item})
+    return models
+
+AVAILABLE_MODELS = BASE_MODELS + _load_custom_models()
+
 # List of valid model IDs (derived from AVAILABLE_MODELS)
 VALID_MODELS = [m["id"] for m in AVAILABLE_MODELS]
 
-# Default model and settings
-DEFAULT_MODEL = "claude-opus-4-5-20251101"
+# Default model: use first custom model if available, otherwise first base model
+def _get_default_model():
+    custom = _load_custom_models()
+    if custom:
+        return custom[0]["id"]
+    return BASE_MODELS[0]["id"]
+
+DEFAULT_MODEL = _get_default_model()
 DEFAULT_YOLO_MODE = False
+
+# Cloud Router Configuration
+# claude-code-router uses Anthropic Messages API format (/v1/messages)
+CLOUD_ROUTER_HOST = "127.0.0.1"
+CLOUD_ROUTER_PORT = 3456
 
 # SQLite connection settings
 SQLITE_TIMEOUT = 30  # seconds to wait for database lock
@@ -516,3 +549,64 @@ def get_all_settings() -> dict[str, str]:
     except Exception as e:
         logger.warning("Failed to read settings: %s", e)
         return {}
+
+
+# =============================================================================
+# Cloud Router Helper Functions
+# =============================================================================
+
+def get_model_info(model_id: str) -> dict | None:
+    """
+    Get model information including router configuration.
+
+    Args:
+        model_id: The model identifier (e.g., "cyankiwi/MiniMax-M2.1-AWQ-4bit")
+
+    Returns:
+        Dictionary with model info including 'router' key if applicable, or None if not found.
+    """
+    for model in AVAILABLE_MODELS:
+        if model["id"] == model_id:
+            return model
+    return None
+
+
+def is_router_model(model_id: str) -> bool:
+    """
+    Check if a model uses the cloud router.
+
+    Router models have the format "provider/model-id" (e.g., "vllm-Spark-01/cyankiwi/MiniMax-M2.1-AWQ-4bit").
+    The provider prefix is used by claude-code-router to route requests to the correct provider.
+
+    Args:
+        model_id: The model identifier.
+
+    Returns:
+        True if the model uses cloud router, False otherwise.
+    """
+    # Router models contain a "/" separator between provider and model
+    # e.g., "vllm-Spark-01/cyankiwi/MiniMax-M2.1-AWQ-4bit"
+    return "/" in model_id
+
+
+def get_router_base_url() -> str:
+    """
+    Get the base URL for the cloud router server.
+
+    Returns:
+        The base URL for API calls (e.g., "http://127.0.0.1:3456/v1").
+    """
+    return f"http://{CLOUD_ROUTER_HOST}:{CLOUD_ROUTER_PORT}"
+
+
+def get_router_api_key() -> str:
+    """
+    Get the API key for the cloud router.
+
+    For local router, we can use any non-empty string (it's ignored by local server).
+    Returns empty string for external services that don't require auth.
+
+    Returns:
+        API key string (empty for local router).
+    """
+    return "not-needed-for-local-router"
